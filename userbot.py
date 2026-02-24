@@ -3,11 +3,12 @@ import os
 from telethon import TelegramClient, events
 from telethon.tl.types import MessageService, MessageMediaWebPage
 
-api_id = 123456
-api_hash = 'abcdef1234567890abcdef1234567890'
+#si esto no funciona ponerlo con los valores fijos
+api_id = int(os.getenv("API_ID"))
+api_hash = os.getenv("API_HASH")
+source_channel = int(os.getenv("SOURCE_CHANNEL"))
+target_channel = int(os.getenv("TARGET_CHANNEL"))
 
-source_channel = -1001858486515
-target_channel = -1003850715445
 
 client = TelegramClient('session_name', api_id, api_hash)
 
