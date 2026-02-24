@@ -17,6 +17,7 @@ target_channel = int(os.getenv("TARGET_CHANNEL"))
 client = TelegramClient('session_name', api_id, api_hash)
 
 CHECKPOINT_FILE = "checkpoint.txt"
+DELAY = 3  # segundos de pausa entre cada envío
 
 def get_checkpoint():
     if os.path.exists(CHECKPOINT_FILE):
@@ -58,11 +59,13 @@ async def copiar_historial():
                     texto = segunda_mitad(message.text) if len(message.text) > 4000 else message.text
                     caption = limpiar_texto(texto)
                 await client.send_file(target, message.media, caption=caption)
+                await asyncio.sleep(DELAY)
             elif message.text:
                 texto = segunda_mitad(message.text) if len(message.text) > 4000 else message.text
                 texto_limpio = limpiar_texto(texto)
                 if texto_limpio:  # Solo enviar si no está vacío
                     await client.send_message(target, texto_limpio)
+                    await asyncio.sleep(DELAY)
 
             save_checkpoint(message.id)
             logging.info(f"Historial: reenviado mensaje {message.id}")
@@ -86,11 +89,13 @@ async def handler(event):
                 texto = segunda_mitad(event.message.text) if len(event.message.text) > 4000 else event.message.text
                 caption = limpiar_texto(texto)
             await client.send_file(target, event.message.media, caption=caption)
+            await asyncio.sleep(DELAY)
         elif event.message.text:
             texto = segunda_mitad(event.message.text) if len(event.message.text) > 4000 else event.message.text
             texto_limpio = limpiar_texto(texto)
             if texto_limpio:  # Solo enviar si no está vacío
                 await client.send_message(target, texto_limpio)
+                await asyncio.sleep(DELAY)
 
         save_checkpoint(event.message.id)
         logging.info(f"Tiempo real: reenviado mensaje {event.message.id}")
@@ -111,7 +116,6 @@ async def main():
         except Exception as e:
             logging.error(f"Error principal: {e}, reiniciando en 5s...")
             await asyncio.sleep(5)
-
 
 if __name__ == "__main__":
     asyncio.run(main())
