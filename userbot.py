@@ -1,14 +1,13 @@
-
 import os
+import asyncio
 from telethon import TelegramClient, events
 from telethon.tl.types import MessageService, MessageMediaWebPage
 
-#si esto no funciona ponerlo con los valores fijos
+# Variables de entorno
 api_id = int(os.getenv("API_ID"))
 api_hash = os.getenv("API_HASH")
 source_channel = int(os.getenv("SOURCE_CHANNEL"))
 target_channel = int(os.getenv("TARGET_CHANNEL"))
-
 
 client = TelegramClient('session_name', api_id, api_hash)
 
@@ -84,7 +83,10 @@ async def handler(event):
     # Guardar checkpoint también en tiempo real
     save_checkpoint(event.message.id)
 
-with client:
-    client.start()
-    client.loop.run_until_complete(copiar_historial())
-    client.run_until_disconnected()
+async def main():
+    async with client:
+        await copiar_historial()
+        await client.run_until_disconnected()
+
+if name == "__main__":
+    asyncio.run(main())
