@@ -88,5 +88,5 @@ async def main():
         await copiar_historial()
         await client.run_until_disconnected()
 
-if name == "__main__":
+if __name__ == "__main__":
     asyncio.run(main())
