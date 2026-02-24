@@ -3,6 +3,7 @@ import asyncio
 import logging
 from telethon import TelegramClient, events
 from telethon.tl.types import MessageService, MessageMediaWebPage
+from telethon.errors import FloodWaitError
 
 # Activar logging para ver actividad en Render
 logging.basicConfig(level=logging.INFO)
@@ -44,11 +45,7 @@ async def copiar_historial():
     target = await client.get_entity(target_channel)
 
     last_id = get_checkpoint()
-
-    if last_id:
-        iterator = client.iter_messages(source, reverse=True, min_id=last_id)
-    else:
-        iterator = client.iter_messages(source, reverse=True)
+    iterator = client.iter_messages(source, reverse=True, min_id=last_id) if last_id else client.iter_messages(source, reverse=True)
 
     async for message in iterator:
         try:
@@ -69,6 +66,10 @@ async def copiar_historial():
 
             save_checkpoint(message.id)
             logging.info(f"Historial: reenviado mensaje {message.id}")
+
+        except FloodWaitError as e:
+            logging.warning(f"FloodWait: esperando {e.seconds} segundos...")
+            await asyncio.sleep(e.seconds)
         except Exception as e:
             logging.error(f"Error en copiar_historial: {e}")
 
@@ -93,6 +94,10 @@ async def handler(event):
 
         save_checkpoint(event.message.id)
         logging.info(f"Tiempo real: reenviado mensaje {event.message.id}")
+
+    except FloodWaitError as e:
+        logging.warning(f"FloodWait en tiempo real: esperando {e.seconds} segundos...")
+        await asyncio.sleep(e.seconds)
     except Exception as e:
         logging.error(f"Error en handler: {e}")
 
