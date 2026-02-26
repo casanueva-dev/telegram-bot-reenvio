@@ -51,9 +51,10 @@ async def copiar_historial():
 
     last_id = get_checkpoint()
     if last_id:
+        # Si ya existe checkpoint, continuar desde ahí
         iterator = client.iter_messages(source, reverse=True, min_id=last_id)
     else:
-        # Solo desde ayer en adelante
+        # Si no hay checkpoint, empezar desde ayer
         iterator = client.iter_messages(source, reverse=True, offset_date=yesterday)
 
     async for message in iterator:
