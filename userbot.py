@@ -1,6 +1,7 @@
 import os
 import asyncio
 import logging
+from datetime import datetime, timedelta
 from telethon import TelegramClient, events
 from telethon.tl.types import MessageService, MessageMediaWebPage
 from telethon.errors import FloodWaitError
@@ -45,8 +46,15 @@ async def copiar_historial():
     source = await client.get_entity(source_channel)
     target = await client.get_entity(target_channel)
 
+    # Fecha de ayer
+    yesterday = datetime.utcnow() - timedelta(days=1)
+
     last_id = get_checkpoint()
-    iterator = client.iter_messages(source, reverse=True, min_id=last_id) if last_id else client.iter_messages(source, reverse=True)
+    if last_id:
+        iterator = client.iter_messages(source, reverse=True, min_id=last_id)
+    else:
+        # Solo desde ayer en adelante
+        iterator = client.iter_messages(source, reverse=True, offset_date=yesterday)
 
     async for message in iterator:
         try:
@@ -63,7 +71,7 @@ async def copiar_historial():
             elif message.text:
                 texto = segunda_mitad(message.text) if len(message.text) > 4000 else message.text
                 texto_limpio = limpiar_texto(texto)
-                if texto_limpio:  # Solo enviar si no está vacío
+                if texto_limpio:
                     await client.send_message(target, texto_limpio)
                     await asyncio.sleep(DELAY)
 
@@ -93,7 +101,7 @@ async def handler(event):
         elif event.message.text:
             texto = segunda_mitad(event.message.text) if len(event.message.text) > 4000 else event.message.text
             texto_limpio = limpiar_texto(texto)
-            if texto_limpio:  # Solo enviar si no está vacío
+            if texto_limpio:
                 await client.send_message(target, texto_limpio)
                 await asyncio.sleep(DELAY)
 
