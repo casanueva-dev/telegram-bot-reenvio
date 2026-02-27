@@ -121,8 +121,8 @@ async def handler(event):
 @client.on(events.ChatAction(chats=source_channel))
 async def photo_change_handler(event):
     try:
-        # Detecta si hay una nueva foto de perfil
-        if event.new_photo:
+        # Detecta si el evento trae una nueva foto de perfil
+        if event.action_message and event.action_message.photo:
             file = await event.download_media()
             await client(EditPhotoRequest(
                 channel=target_channel,
@@ -131,6 +131,8 @@ async def photo_change_handler(event):
                 )
             ))
             logging.info("Foto de perfil sincronizada con el canal origen")
+        else:
+            logging.info("Evento ChatAction recibido pero no era cambio de foto")
     except Exception as e:
         logging.error(f"Error al sincronizar foto de perfil: {e}")
 
