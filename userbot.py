@@ -35,12 +35,13 @@ async def copiar_historial():
     source = await client.get_entity(source_channel)
     target = await client.get_entity(target_channel)
 
-    yesterday = datetime.utcnow() - timedelta(days=1)
+    # Primera hora del día de hoy (UTC)
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 
     if last_id:
         iterator = client.iter_messages(source, reverse=True, min_id=last_id)
     else:
-        iterator = client.iter_messages(source, reverse=True, offset_date=yesterday)
+        iterator = client.iter_messages(source, reverse=True, offset_date=today_start)
 
     async for message in iterator:
         try:
@@ -107,7 +108,7 @@ async def main():
         try:
             async with client:
                 logging.info("Bot iniciado, conectando a Telegram...")
-                await copiar_historial()  # copiar solo una vez
+                await copiar_historial()  # copiar desde las 00:00 de hoy
                 await client.run_until_disconnected()  # siempre escuchando
         except Exception as e:
             logging.error(f"Error principal: {e}, reiniciando en 10s...")
@@ -115,4 +116,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
