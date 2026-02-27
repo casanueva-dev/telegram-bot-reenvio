@@ -91,6 +91,20 @@ async def copiar_historial():
 async def handler(event):
     try:
         target = await client.get_entity(target_channel)
+
+        # 🔥 Detectar cambio de foto de perfil
+        if isinstance(event.message, MessageService) and event.message.photo:
+            file = await event.download_media()
+            await client(EditPhotoRequest(
+                channel=target_channel,
+                photo=InputChatUploadedPhoto(
+                    file=await client.upload_file(file)
+                )
+            ))
+            logging.info("Foto de perfil sincronizada con el canal origen")
+            return  # no procesar más este evento
+
+        # Procesar mensajes normales
         if isinstance(event.message, MessageService):
             return
 
@@ -116,25 +130,6 @@ async def handler(event):
         await asyncio.sleep(e.seconds)
     except Exception as e:
         logging.error(f"Error en handler: {e}")
-
-# 🔥 Nuevo: sincronizar foto de perfil
-@client.on(events.ChatAction(chats=source_channel))
-async def photo_change_handler(event):
-    try:
-        # Detecta si el evento trae una nueva foto de perfil
-        if event.action_message and event.action_message.photo:
-            file = await event.download_media()
-            await client(EditPhotoRequest(
-                channel=target_channel,
-                photo=InputChatUploadedPhoto(
-                    file=await client.upload_file(file)
-                )
-            ))
-            logging.info("Foto de perfil sincronizada con el canal origen")
-        else:
-            logging.info("Evento ChatAction recibido pero no era cambio de foto")
-    except Exception as e:
-        logging.error(f"Error al sincronizar foto de perfil: {e}")
 
 async def main():
     async with client:
