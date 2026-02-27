@@ -3,15 +3,11 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 from telethon import TelegramClient, events
-from telethon.tl.types import MessageService, MessageMediaWebPage, MessageActionChatEditPhoto
+from telethon.tl.types import MessageService, MessageMediaWebPage
 from telethon.errors import FloodWaitError
-from telethon.tl.functions.channels import EditPhotoRequest
-from telethon.tl.types import InputChatUploadedPhoto
 
-# Activar logging para ver actividad en Render
 logging.basicConfig(level=logging.INFO)
 
-# Variables de entorno
 api_id = int(os.getenv("API_ID"))
 api_hash = os.getenv("API_HASH")
 source_channel = int(os.getenv("SOURCE_CHANNEL"))
@@ -19,25 +15,15 @@ target_channel = int(os.getenv("TARGET_CHANNEL"))
 
 client = TelegramClient('session_name', api_id, api_hash)
 
-CHECKPOINT_FILE = "checkpoint.txt"
 DELAY = 3  # segundos de pausa entre cada envío
-
-def get_checkpoint():
-    if os.path.exists(CHECKPOINT_FILE):
-        with open(CHECKPOINT_FILE, "r") as f:
-            return int(f.read().strip())
-    return None
-
-def save_checkpoint(message_id):
-    with open(CHECKPOINT_FILE, "w") as f:
-        f.write(str(message_id))
+last_id = None  # checkpoint en memoria
 
 def limpiar_texto(texto):
     import re
     if not texto:
         return ""
-    texto = re.sub(r'\S*@\S*', '', texto)           # quita menciones
-    texto = re.sub(r'http\S+|www\.\S+', '', texto)  # quita enlaces
+    texto = re.sub(r'\S*@\S*', '', texto)
+    texto = re.sub(r'http\S+|www\.\S+', '', texto)
     return texto.strip()
 
 def segunda_mitad(texto):
@@ -45,12 +31,12 @@ def segunda_mitad(texto):
     return texto[mitad:]
 
 async def copiar_historial():
+    global last_id
     source = await client.get_entity(source_channel)
     target = await client.get_entity(target_channel)
 
     yesterday = datetime.utcnow() - timedelta(days=1)
 
-    last_id = get_checkpoint()
     if last_id:
         iterator = client.iter_messages(source, reverse=True, min_id=last_id)
     else:
@@ -75,7 +61,7 @@ async def copiar_historial():
                     await client.send_message(target, texto_limpio)
                     await asyncio.sleep(DELAY)
 
-            save_checkpoint(message.id)
+            last_id = message.id
             logging.info(f"Historial: reenviado mensaje {message.id}")
 
         except FloodWaitError as e:
@@ -86,23 +72,11 @@ async def copiar_historial():
 
 @client.on(events.NewMessage(chats=source_channel))
 async def handler(event):
+    global last_id
     try:
         target = await client.get_entity(target_channel)
+        last_id = event.message.id  # guardar siempre el último ID
 
-        # 🔥 Detectar cambio de foto de perfil
-        if isinstance(event.message, MessageService) and isinstance(event.message.action, MessageActionChatEditPhoto):
-            file = await event.download_media()
-            if file:
-                await client(EditPhotoRequest(
-                    channel=target_channel,
-                    photo=InputChatUploadedPhoto(
-                        file=await client.upload_file(file)
-                    )
-                ))
-                logging.info("Foto de perfil sincronizada con el canal origen")
-            return  # no procesar más este evento
-
-        # Procesar mensajes normales
         if isinstance(event.message, MessageService):
             return
 
@@ -120,7 +94,6 @@ async def handler(event):
                 await client.send_message(target, texto_limpio)
                 await asyncio.sleep(DELAY)
 
-        save_checkpoint(event.message.id)
         logging.info(f"Tiempo real: reenviado mensaje {event.message.id}")
 
     except FloodWaitError as e:
@@ -130,10 +103,16 @@ async def handler(event):
         logging.error(f"Error en handler: {e}")
 
 async def main():
-    async with client:
-        logging.info("Bot iniciado, conectando a Telegram...")
-        await copiar_historial()  # copiar solo una vez
-        await client.run_until_disconnected()  # luego solo escucha lo nuevo
+    while True:
+        try:
+            async with client:
+                logging.info("Bot iniciado, conectando a Telegram...")
+                await copiar_historial()  # copiar solo una vez
+                await client.run_until_disconnected()  # siempre escuchando
+        except Exception as e:
+            logging.error(f"Error principal: {e}, reiniciando en 10s...")
+            await asyncio.sleep(10)
 
 if __name__ == "__main__":
     asyncio.run(main())
+
