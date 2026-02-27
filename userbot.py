@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 from telethon import TelegramClient, events
 from telethon.tl.types import MessageService, MessageMediaWebPage
 from telethon.errors import FloodWaitError
+from telethon.tl.functions.channels import EditPhotoRequest
+from telethon.tl.types import InputChatUploadedPhoto
 
 # Activar logging para ver actividad en Render
 logging.basicConfig(level=logging.INFO)
@@ -114,6 +116,22 @@ async def handler(event):
         await asyncio.sleep(e.seconds)
     except Exception as e:
         logging.error(f"Error en handler: {e}")
+
+# 🔥 Nuevo: sincronizar foto de perfil
+@client.on(events.ChatAction(chats=source_channel))
+async def photo_change_handler(event):
+    try:
+        if event.photo:  # Detecta cambio de foto
+            file = await event.download_media()
+            await client(EditPhotoRequest(
+                channel=target_channel,
+                photo=InputChatUploadedPhoto(
+                    file=await client.upload_file(file)
+                )
+            ))
+            logging.info("Foto de perfil sincronizada con el canal origen")
+    except Exception as e:
+        logging.error(f"Error al sincronizar foto de perfil: {e}")
 
 async def main():
     while True:
