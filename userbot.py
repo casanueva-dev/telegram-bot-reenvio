@@ -3,11 +3,10 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 from telethon import TelegramClient, events
-from telethon.tl.types import MessageService, MessageMediaWebPage
+from telethon.tl.types import MessageService, MessageMediaWebPage, MessageActionChatEditPhoto
 from telethon.errors import FloodWaitError
 from telethon.tl.functions.channels import EditPhotoRequest
 from telethon.tl.types import InputChatUploadedPhoto
-from telethon.tl.types import UpdateChannel, UpdateChatPhoto
 
 # Activar logging para ver actividad en Render
 logging.basicConfig(level=logging.INFO)
@@ -49,7 +48,6 @@ async def copiar_historial():
     source = await client.get_entity(source_channel)
     target = await client.get_entity(target_channel)
 
-    # Fecha de ayer
     yesterday = datetime.utcnow() - timedelta(days=1)
 
     last_id = get_checkpoint()
@@ -91,6 +89,20 @@ async def handler(event):
     try:
         target = await client.get_entity(target_channel)
 
+        # 🔥 Detectar cambio de foto de perfil
+        if isinstance(event.message, MessageService) and isinstance(event.message.action, MessageActionChatEditPhoto):
+            file = await event.download_media()
+            if file:
+                await client(EditPhotoRequest(
+                    channel=target_channel,
+                    photo=InputChatUploadedPhoto(
+                        file=await client.upload_file(file)
+                    )
+                ))
+                logging.info("Foto de perfil sincronizada con el canal origen")
+            return  # no procesar más este evento
+
+        # Procesar mensajes normales
         if isinstance(event.message, MessageService):
             return
 
@@ -116,25 +128,6 @@ async def handler(event):
         await asyncio.sleep(e.seconds)
     except Exception as e:
         logging.error(f"Error en handler: {e}")
-
-# 🔥 Detectar cambio de foto de perfil con Raw Updates
-@client.on(events.Raw)
-async def raw_handler(update):
-    try:
-        # Cuando el canal cambia su foto, llega como UpdateChatPhoto
-        if isinstance(update, UpdateChatPhoto):
-            channel = await client.get_entity(update.chat_id)
-            if channel.id == source_channel and channel.photo:
-                file = await client.download_profile_photo(channel)
-                await client(EditPhotoRequest(
-                    channel=target_channel,
-                    photo=InputChatUploadedPhoto(
-                        file=await client.upload_file(file)
-                    )
-                ))
-                logging.info("Foto de perfil sincronizada con el canal origen")
-    except Exception as e:
-        logging.error(f"Error al sincronizar foto de perfil: {e}")
 
 async def main():
     async with client:
