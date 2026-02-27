@@ -121,7 +121,8 @@ async def handler(event):
 @client.on(events.ChatAction(chats=source_channel))
 async def photo_change_handler(event):
     try:
-        if event.photo:  # Detecta cambio de foto
+        # Detecta si hay una nueva foto de perfil
+        if event.new_photo:
             file = await event.download_media()
             await client(EditPhotoRequest(
                 channel=target_channel,
