@@ -134,15 +134,10 @@ async def photo_change_handler(event):
         logging.error(f"Error al sincronizar foto de perfil: {e}")
 
 async def main():
-    while True:
-        try:
-            async with client:
-                logging.info("Bot iniciado, conectando a Telegram...")
-                await copiar_historial()
-                await client.run_until_disconnected()
-        except Exception as e:
-            logging.error(f"Error principal: {e}, reiniciando en 5s...")
-            await asyncio.sleep(5)
+    async with client:
+        logging.info("Bot iniciado, conectando a Telegram...")
+        await copiar_historial()  # copiar solo una vez
+        await client.run_until_disconnected()  # luego solo escucha lo nuevo
 
 if __name__ == "__main__":
     asyncio.run(main())
